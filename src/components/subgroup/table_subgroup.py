@@ -1,9 +1,14 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidget, QTableWidgetItem, QAbstractItemView, QCheckBox
+from PySide6.QtWidgets import (QApplication, QMainWindow, QTableWidget, QTableWidgetItem, QAbstractItemView,
+                               QVBoxLayout, QLineEdit, QWidget)
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 import sys
+from unidecode import unidecode
 
 sys.path.append(r'C:\Users\Wesllei\OneDrive\Imagens\OneDrive\Documentos\personal-projects\burite_master_frontend\src')
+
 from src.end_points.subgroups import Subgroup
+
 import asyncio
 
 loop = asyncio.get_event_loop()
@@ -17,35 +22,96 @@ class MyWindow(QMainWindow):
         self._fetch = Subgroup().get_resume_subgroups
         self._subgroups = []
 
-        self.setWindowTitle("Exemplo de Tabela")
         self.setGeometry(100, 100, 1024, 400)
-
+        self.setWindowTitle("Subgrupos")
+        self.setWindowIcon(QIcon(r'C:\Users\Wesllei\OneDrive\Imagens\OneDrive\Documentos\personal-projects'
+                                 r'\burite_master_frontend\src\assets\business_package_box_products_2343.ico'))
+        # Criando a tabela
         self.tableWidget = QTableWidget()
-        self.tableWidget.setRowCount(3)  # Definindo o número de linhas
-        columns = [
-            '',
-            'ID',
-            'Nome',
-            'Quantidade',
-            'Despesa Fixa',
-            'Total despesa fixa',
-            'Total despesa variável',
-            'Total Faturamento',
-            'Total custo',
-            'Total Desconto',
-            'Lucro do Subgrupo',
-            'Porcentagem Desconto'
-            'Quantidade Devolvida',
-            'Porcentagem Faturamento'
-            'Porcentagem Custo',
-            'Porcentagem de Lucro Total',
-            'Porcentagem despesa Fixa',
-            'Atualizado em',
-        ]
-        self.tableWidget.setColumnCount(len(columns))  # Definindo o número de colunas
+
+        # Criando a caixa de pesquisa
+        self.search_box = QLineEdit()
+        self.search_box.textChanged.connect(self.filter_subgroup)
+        # Incluido um placeholder a caixa de pesquisa
+        self.search_box.setPlaceholderText("Buscar subgrupo")
 
         # Agora você pode chamar o método fetch_subgroup
         self._run_loop_subgroup = loop.run_until_complete(self.fetch_subgroup())
+
+        # Define que não é permitido editar os valores dos itens da tabela
+        self.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+        # Define que a tabela só pode selecionar um item
+        self.tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
+
+        # Define que quando um item for clicado seleciona todos os elementos daquela linha
+        self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
+
+        # Define que não vai exibir a numeração das linhs
+        self.tableWidget.verticalHeader().setVisible(False)
+
+        self.setCentralWidget(self.tableWidget)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.search_box)
+        layout.addWidget(self.tableWidget)
+
+        # Centraliza o layout em um widget central
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
+
+    def filter_subgroup(self, text):
+        base = self._subgroups
+        list_filter = [subgroup for subgroup in base if
+                       unidecode(text).lower() in unidecode(subgroup['nameSubgroup']).lower()]
+
+        self.tableWidget.setRowCount(len(list_filter))
+
+        columns = [
+            'ID',
+            'Nome',
+            'Despesa Fixa',
+            'Base Lucro Subgrupo',
+            'Atualizado em',
+        ]
+
+        column_to_property = {
+            'ID': 'codSubgroup',
+            'Nome': 'nameSubgroup',
+            'Despesa Fixa': 'fixedUnitExpense',
+            'Base Lucro Subgrupo': 'plucro',
+            'Atualizado em': 'updatedAt',
+        }
+
+        column_size = {
+            'ID': 20,
+            'Nome': 460,
+            'Despesa Fixa': 80,
+            'Base Lucro Subgrupo': 130,
+            'Atualizado em': 150,
+        }
+
+        # Preenchimento da tabela
+        for row_index, row in enumerate(list_filter):
+            for col_index, col_name in enumerate(columns):
+                # Obter a chave correspondente ao nome da coluna
+                property_name = column_to_property.get(col_name)
+                if property_name is not None:
+                    # Obtendo o valor da propriedade do dicionário
+                    cell_value = row.get(property_name, '')  # Aqui pegamos diretamente o valor da propriedade com a 
+                    # chave correta
+                    # em row
+                    # Convertendo o valor para string
+                    cell_value_str = str(cell_value)
+                    # Criando o item da célula da tabela
+                    item = QTableWidgetItem(cell_value_str)
+                    # Definindo o item na posição correta na tabela
+                    self.tableWidget.setItem(row_index, col_index, item)
+                    self.tableWidget.setColumnWidth(col_index, column_size[col_name])
+
+    async def fetch_all(self):
+        self._subgroups = await self._fetch(self._url)
 
     async def fetch_subgroup(self):
         data = await self._fetch(self._url)
@@ -53,23 +119,10 @@ class MyWindow(QMainWindow):
 
         # Definição das colunas
         columns = [
-            '',
             'ID',
             'Nome',
-            'QTD',
             'Despesa Fixa',
-            'Total despesa fixa',
-            'Total despesa variável',
-            'Total Faturamento',
-            'Total custo',
-            'Total Desconto',
-            'Lucro do Subgrupo',
-            'Porcentagem Desconto',
-            'Quantidade Devolvida',
-            'Porcentagem Faturamento',
-            'Porcentagem Custo',
-            'Porcentagem de Lucro Total',
-            'Porcentagem despesa Fixa',
+            'Base Lucro Subgrupo',
             'Atualizado em',
         ]
 
@@ -77,46 +130,25 @@ class MyWindow(QMainWindow):
         column_to_property = {
             'ID': 'codSubgroup',
             'Nome': 'nameSubgroup',
-            'QTD': 'amountQuantity',
             'Despesa Fixa': 'fixedUnitExpense',
-            'Total despesa fixa': 'amountFixed',
-            'Total despesa variável': 'amountVariableExpense',
-            'Total Faturamento': 'amountInvoicing',
-            'Total custo': 'amountCost',
-            'Total Desconto': 'amountDiscount',
-            'Lucro do Subgrupo': 'subgroupProfit',
-            'Porcentagem Desconto': 'discountPercentage',
-            'Quantidade Devolvida': 'amountQuantityReturned',
-            'Porcentagem Faturamento': 'invoicingPercentage',
-            'Porcentagem Custo': 'costPercentage',
-            'Porcentagem de Lucro Total': 'subgroupProfitPercentage',
-            'Porcentagem despesa Fixa': 'fixedExpensePercentage',
+            'Base Lucro Subgrupo': 'plucro',
             'Atualizado em': 'updatedAt',
         }
 
         column_size = {
             'ID': 20,
-            'Nome': 230,
-            'QTD': 70,
-            'Despesa Fixa': 30,
-            'Total despesa fixa': 40,
-            'Total despesa variável': 40,
-            'Total Faturamento': 60,
-            'Total custo': 60,
-            'Total Desconto': 40,
-            'Lucro do Subgrupo': 40,
-            'Porcentagem Desconto': 20,
-            'Quantidade Devolvida': 30,
-            'Porcentagem Faturamento': 20,
-            'Porcentagem Custo': 20,
-            'Porcentagem de Lucro Total': 20,
-            'Porcentagem despesa Fixa': 20,
-            'Atualizado em': 40,
+            'Nome': 460,
+            'Despesa Fixa': 80,
+            'Base Lucro Subgrupo': 130,
+            'Atualizado em': 150,
         }
-        
+
         # Definindo o número de linhas e colunas na tabela
         self.tableWidget.setRowCount(len(self._subgroups))
-        self.tableWidget.setColumnCount(len(columns))
+        self.tableWidget.setColumnCount(5)
+
+        # Definição dos nomes das colunas
+        self.tableWidget.setHorizontalHeaderLabels(columns)
 
         # Preenchimento da tabela
         for row_index, row in enumerate(self._subgroups):
@@ -125,8 +157,9 @@ class MyWindow(QMainWindow):
                 property_name = column_to_property.get(col_name)
                 if property_name is not None:
                     # Obtendo o valor da propriedade do dicionário
-                    cell_value = row.get(property_name,
-                                         '')  # Aqui pegamos diretamente o valor da propriedade com a chave correta em row
+                    cell_value = row.get(property_name, '')  # Aqui pegamos diretamente o valor da propriedade com a 
+                    # chave correta
+                    # em row
                     # Convertendo o valor para string
                     cell_value_str = str(cell_value)
                     # Criando o item da célula da tabela
@@ -134,24 +167,6 @@ class MyWindow(QMainWindow):
                     # Definindo o item na posição correta na tabela
                     self.tableWidget.setItem(row_index, col_index, item)
                     self.tableWidget.setColumnWidth(col_index, column_size[col_name])
-            checkbox = QCheckBox()
-            checkbox.setCheckState(Qt.Unchecked)
-            self.tableWidget.setCellWidget(row_index, 0, checkbox)
-            self.tableWidget.setColumnWidth(0, 15)
-
-        # Definição dos nomes das colunas
-        self.tableWidget.setHorizontalHeaderLabels(columns)
-
-        # Define que não é permitido editar os valores dos itens da tabela
-        self.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
-
-        # Define que quando um item for clicado seleciona todos os elementos daquela linha
-        self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)
-        
-        # Define que não vai exibir a numeração das linhs
-        self.tableWidget.verticalHeader().setVisible(False)
-        
-        self.setCentralWidget(self.tableWidget)
 
 
 def main():
