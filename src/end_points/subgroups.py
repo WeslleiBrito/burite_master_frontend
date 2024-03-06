@@ -1,7 +1,9 @@
 import aiohttp
 import asyncio
+import locale
 from datetime import datetime, timedelta
-import pytz
+
+locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
 
 class Subgroup:
@@ -20,12 +22,15 @@ class Subgroup:
                                         ) - timedelta(hours=3)
 
                     response_itens[index]["updatedAt"] = new_date.strftime('%d/%m/%Y %H:%M:%S')
-
+                    response_itens[index]["fixedUnitExpense"] = locale.currency(
+                        response_itens[index]["fixedUnitExpense"],
+                        symbol=False
+                    )
                 return response_itens
 
 
 async def main():
-    url = 'http://localhost:3003/subgroup'
+    url = 'http://192.168.0.112:3004/subgroup'
     subgroup = Subgroup()
     data = await subgroup.get_resume_subgroups(url)
 
