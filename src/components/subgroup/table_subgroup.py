@@ -204,7 +204,7 @@ class MyWindow(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    window = MyWindow('http://localhost:3003/subgroup')
+    window = MyWindow('http://192.168.0.112:3004/subgroup')
     window.show()
     sys.exit(app.exec())
 

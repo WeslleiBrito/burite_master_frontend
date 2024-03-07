@@ -29,11 +29,12 @@ class Subgroup:
                 return response_itens
 
 
-async def main():
-    url = 'http://192.168.0.112:3004/subgroup'
-    subgroup = Subgroup()
-    data = await subgroup.get_resume_subgroups(url)
-
-
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+# async def main():
+#     url = 'http://192.168.0.112:3004/subgroup'
+#     subgroup = Subgroup()
+#     data = await subgroup.get_resume_subgroups(url)
+#     print(data)
+# 
+# 
+# loop = asyncio.get_event_loop()
+# loop.run_until_complete(main())
