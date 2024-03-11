@@ -21,6 +21,7 @@ from PySide6.QtCore import (
 
 from PySide6.QtGui import QIcon
 import sys
+import copy
 
 sys.path.append(r'C:\Users\Wesllei\OneDrive\Imagens\OneDrive\Documentos\personal-projects\burite_master_frontend\src')
 
@@ -28,6 +29,9 @@ from src.end_points.subgroups import Subgroup
 
 import asyncio
 from unidecode import unidecode
+import locale
+
+locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
 loop = asyncio.get_event_loop()
 
@@ -59,7 +63,7 @@ class MyWindow(QMainWindow):
         self._url = url
         self._fetch = Subgroup().get_resume_subgroups
         self._subgroups = []
-
+        self._order = True
         self.setGeometry(100, 100, 1024, 400)
         self.setWindowTitle("Subgrupos")
         self.setWindowIcon(QIcon(r'C:\Users\Wesllei\OneDrive\Imagens\OneDrive\Documentos\personal-projects'
@@ -71,29 +75,29 @@ class MyWindow(QMainWindow):
             'ID',
             'Nome',
             'Despesa Fixa',
-            'Base Lucro',
-            'Atualizado em',
+            'Base Lucro'
         ]
 
         self._column_to_property = {
             'ID': 'codSubgroup',
             'Nome': 'nameSubgroup',
             'Despesa Fixa': 'fixedUnitExpense',
-            'Base Lucro': 'plucro',
-            'Atualizado em': 'updatedAt',
+            'Base Lucro': 'plucro'
         }
 
         self._column_size = {
             'ID': 20,
             'Nome': 300,
             'Despesa Fixa': 80,
-            'Base Lucro': 70,
-            'Atualizado em': 150
+            'Base Lucro': 70
         }
 
         # Criando a tabela
         self.tableWidget = QTableWidget()
-
+        # Definindo o número colunas na tabela
+        self.tableWidget.setColumnCount(len(self._columns))
+        # Definição dos nomes das colunas
+        self.tableWidget.setHorizontalHeaderLabels(self._columns)
         # Criando a caixa de pesquisa
         self.search_box = QLineEdit()
         self.search_box.textChanged.connect(self.filter_subgroup)
@@ -117,7 +121,7 @@ class MyWindow(QMainWindow):
         self.tableWidget.verticalHeader().setVisible(False)
 
         # Define que ao clicar na coluna deve ser ordenado
-        self.tableWidget.setSortingEnabled(True)
+        # self.tableWidget.setSortingEnabled(True)
         self.setCentralWidget(self.tableWidget)
         layout = QVBoxLayout()
         layout.addWidget(self.search_box)
@@ -127,19 +131,40 @@ class MyWindow(QMainWindow):
         central_widget = QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
-
         # Conectar o sinal cellDoubleClicked ao método para manipular o evento
+        self.setWindowTitle(f'Subgrupo: Atualizado em: {self._subgroups[0]["updatedAt"]}')
         self.tableWidget.cellDoubleClicked.connect(self.handle_cell_double_clicked)
+        self.tableWidget.horizontalHeader().sectionClicked.connect(self.sortedColumn)
 
     def filter_subgroup(self, text):
         base = self._subgroups
         list_filter = [subgroup for subgroup in base if
                        unidecode(text).lower() in unidecode(subgroup['nameSubgroup']).lower()]
 
-        self.tableWidget.setRowCount(len(list_filter))
+        self._fill_table(self._format_number(copy.deepcopy(list_filter)))
+
+    async def fetch_all(self):
+        self._subgroups = await self._fetch(self._url)
+        self.setWindowTitle(f'Subgrupo: Atualizado em: {self._subgroups[0]["updatedAt"]}')
+
+    @staticmethod
+    def _format_number(list_subgroup):
+
+        for index, item in enumerate(list_subgroup):
+            list_subgroup[int(index)]["fixedUnitExpense"] = locale.currency(
+                list_subgroup[int(index)]["fixedUnitExpense"],
+                symbol=False
+            )
+
+        return list_subgroup
+
+    def _fill_table(self, data_table):
+
+        # Definindo o número de linhas
+        self.tableWidget.setRowCount(len(data_table))
 
         # Preenchimento da tabela
-        for row_index, row in enumerate(list_filter):
+        for row_index, row in enumerate(data_table):
             for col_index, col_name in enumerate(self._columns):
                 # Obter a chave correspondente ao nome da coluna
                 property_name = self._column_to_property.get(col_name)
@@ -158,38 +183,23 @@ class MyWindow(QMainWindow):
                     self.tableWidget.setItem(row_index, col_index, item)
                     self.tableWidget.setColumnWidth(col_index, self._column_size[col_name])
 
-    async def fetch_all(self):
-        self._subgroups = await self._fetch(self._url)
+    def sortedColumn(self, e):
+
+        list_columns_index = [
+            'codSubgroup',
+            'nameSubgroup',
+            'fixedUnitExpense',
+            'plucro'
+        ]
+
+        self._subgroups = sorted(self._subgroups, key=lambda x: x[list_columns_index[e]], reverse=self._order)
+        self._fill_table(self._format_number(copy.deepcopy(self._subgroups)))
+        self._order = not self._order
 
     async def fetch_subgroup(self):
         data = await self._fetch(self._url)
         self._subgroups = data
-
-        # Definindo o número de linhas e colunas na tabela
-        self.tableWidget.setRowCount(len(self._subgroups))
-        self.tableWidget.setColumnCount(5)
-
-        # Definição dos nomes das colunas
-        self.tableWidget.setHorizontalHeaderLabels(self._columns)
-        # Preenchimento da tabela
-        for row_index, row in enumerate(self._subgroups):
-            for col_index, col_name in enumerate(self._columns):
-                # Obter a chave correspondente ao nome da coluna
-                property_name = self._column_to_property.get(col_name)
-                if property_name is not None:
-                    # Obtendo o valor da propriedade do dicionário
-                    cell_value = row.get(property_name, '')  # Aqui pegamos diretamente o valor da propriedade com a 
-                    # chave correta
-                    # em row
-                    # Convertendo o valor para string
-                    cell_value_str = str(cell_value)
-                    # Criando o item da célula da tabela
-                    item = QTableWidgetItem(cell_value_str)
-                    # Definindo que os textos dentro da célula ficará centralizado 
-                    item.setTextAlignment(Qt.AlignCenter)
-                    # Definindo o item na posição correta na tabela
-                    self.tableWidget.setItem(row_index, col_index, item)
-                    self.tableWidget.setColumnWidth(col_index, self._column_size[col_name])
+        self._fill_table(self._format_number(copy.deepcopy(self._subgroups)))
 
     def handle_cell_double_clicked(self, row):
         # Obtém o ID e o Nome do subgrupo na célula clicada
