@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 import locale
-from datetime import datetime, timedelta
+from datetime import datetime
 
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
@@ -17,14 +17,6 @@ class Subgroup:
                 for index, item in enumerate(response_itens):
                     updated_at = datetime.strptime(response_itens[index]["updatedAt"], '%Y-%m-%dT%H:%M:%S.000Z')
 
-                    new_date = datetime(year=updated_at.year, month=updated_at.month, day=updated_at.day,
-                                        hour=updated_at.hour, minute=updated_at.minute, second=updated_at.second
-                                        ) - timedelta(hours=3)
+                    response_itens[index]["updatedAt"] = updated_at
 
-                    response_itens[index]["updatedAt"] = new_date.strftime('%d/%m/%Y %H:%M:%S')
-                    # response_itens[index]["fixedUnitExpense"] = locale.currency(
-                    #     response_itens[index]["fixedUnitExpense"],
-                    #     symbol=False
-                    # )
                 return response_itens
-

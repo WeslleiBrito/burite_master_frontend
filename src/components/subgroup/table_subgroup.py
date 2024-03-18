@@ -59,7 +59,6 @@ class SubgroupInfoDialog(QDialog):
 class MyWindow(QMainWindow):
     def __init__(self, url: str):
         super().__init__()
-        self._loop = asyncio.get_event_loop()
         self._url = url
         self._fetch = Subgroup().get_resume_subgroups
         self._subgroups = []
